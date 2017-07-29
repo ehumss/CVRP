@@ -138,7 +138,6 @@ if __name__ == '__main__':
         df = df.T
         print(df)
 
-
         for key, value in route.items():
             for ind, val in df[key].iteritems():
                 if val is not None:
@@ -146,8 +145,6 @@ if __name__ == '__main__':
                         ip_data[key].iloc[int(val)] = int(ind)
                     else:
                         ip_data[key].iloc[0] = 0
-        print(ip_data)
-
     else:
         print(
             'This test requires an input file.  Please select one from the data directory. (i.e. python solver.py ./data/vrp_5_4_1)')
