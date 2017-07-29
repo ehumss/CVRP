@@ -13,7 +13,7 @@ from bokeh.io import output_file, save, show
 Customer = namedtuple("Customer", ['index', 'demand', 'x', 'y'])
 
 def length(customer1, customer2):
-    return math.sqrt((customer1.x - customer2.x) ** 2 + (customer1.y - customer2.y) ** 2)
+    return (abs(customer1.x - customer2.x)  + abs(customer1.y - customer2.y))
 
 def solve_it(input_data):
 
@@ -103,9 +103,14 @@ if __name__ == '__main__':
 
         # Reading output file
 
+
+        ip_data = pd.read_csv(file_location, sep=' ', header=None, skiprows=[0], skip_blank_lines=True,
+                         names=['Demand', 'x-cor', 'y-cor']).dropna(axis=0)
+
         data = pd.read_csv("./result/solution.csv")
 
         df = data[data['Variable'].str.startswith('Path')]
+        print(df)
         routes = []
         for i,row in df.iterrows():
             x = row['Variable'].split()
@@ -119,28 +124,29 @@ if __name__ == '__main__':
         route = {}
         for j in routes_copy:
             if route_counter > 0 and j[0] == '0':
-                route[route_counter] = j
+                route["Route " + str(route_counter)] = j
                 route_counter -=1
 
         for key, value in route.items():
+            ip_data[key] = ""
             for i in value:
                 if value[-1] != '0':
                     for j in routes_copy:
                         if value[-1] == j[0]:
                             value.append(j[1])
-
-        print(str(route))
-
-
-
-        # route = []
-        # for i in range(route_counter):
-        #     for j in routes_copy:
-        #         if j[0]=='0':
-        #             route[i+1].append(routes_copy[j])
-        #         elif j
+        df = pd.DataFrame.from_dict(route,orient='index')
+        df = df.T
+        print(df)
 
 
+        for key, value in route.items():
+            for ind, val in df[key].iteritems():
+                if val is not None:
+                    if (int(ind) != 0 and int(val) != 0):
+                        ip_data[key].iloc[int(val)] = int(ind)
+                    else:
+                        ip_data[key].iloc[0] = 0
+        print(ip_data)
 
     else:
         print(
