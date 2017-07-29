@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import math
+
 import numpy as np
 import pandas as pd
 from gurobipy import *
 from collections import namedtuple
 from bokeh.plotting import figure
 from bokeh.io import output_file, save, show
+from bokeh.models import ColumnDataSource
 
 Customer = namedtuple("Customer", ['index', 'demand', 'x', 'y'])
 
@@ -132,7 +134,31 @@ def post_proc(ip_data):
                     ip_data[key].iloc[int(val)] = int(ind)
                 else:
                     ip_data[key].iloc[0] = 0
+            ip_data[key] = pd.to_numeric(ip_data[key], errors='coerce')
     return vehicles, ip_data
+
+def visual_treat(op_data):
+    f = figure()
+
+    cds = ColumnDataSource(op_data)
+    x_depot = cds.data['x-cor'][0]
+    y_depot = cds.data['y-cor'][0]
+    f.circle(x=x_depot, y=y_depot, source=cds, size=15, color='red')
+    f.circle(x=cds.data['x-cor'][1:], y=cds.data['y-cor'][1:], size=5, color='blue')
+
+    x_line = []
+    y_line = []
+
+    x_line.append(cds.data['x-cor'][0])
+    y_line.append(cds.data['y-cor'][0])
+
+    for i in range(int(max(cds.data['Route 1'])), -1, -1):
+        x_line.append(cds.data['x-cor'][i])
+        y_line.append(cds.data['y-cor'][i])
+    f.line(x=x_line, y=y_line)
+
+    show(f)
+
 
 import sys
 if __name__ == '__main__':
@@ -151,6 +177,7 @@ if __name__ == '__main__':
         ip_data = pd.read_csv(file_location, sep=' ', header=None, skiprows=[0], skip_blank_lines=True,
                               names=['Demand', 'x-cor', 'y-cor']).dropna(axis=0)
 
+        # post_proc will process the data and put all them in a readable dataframe for bokeh to take over
         vehicles, op_data = post_proc(ip_data)
 
         print("The optimal solution is to use " + str(vehicles) + " vehicles for this problem")
@@ -158,7 +185,8 @@ if __name__ == '__main__':
         print("The path to be followed is shown in the below grid: ")
         print(op_data)
 
-        # Reading output file
+        # The following method is to show the routes in bokeh
+        visual_treat(op_data)
 
     else:
         print(
