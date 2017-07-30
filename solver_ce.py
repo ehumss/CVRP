@@ -9,6 +9,7 @@ from gurobipy import *
 from collections import namedtuple
 from bokeh.plotting import figure
 from bokeh.io import output_file, save, show
+from bokeh.palettes import Spectral11
 from bokeh.models import ColumnDataSource
 
 Customer = namedtuple("Customer", ['index', 'demand', 'x', 'y'])
@@ -137,22 +138,28 @@ def post_proc(ip_data):
             ip_data[key] = pd.to_numeric(ip_data[key], errors='coerce')
     return vehicles, ip_data
 
-def visual_treat(op_data):
-    f = figure()
+def visual_treat(vehicles, op_data):
+
+    TOOLS = "hover,crosshair,pan,wheel_zoom,zoom_in,zoom_out,box_zoom," \
+            "undo,redo,reset,tap,save,box_select,poly_select,lasso_select,"
+    mypalette = Spectral11[0:vehicles]
+    print(mypalette)
+
+    f = figure(tools=TOOLS)
 
     cds = ColumnDataSource(op_data)
     x_depot = cds.data['x-cor'][0]
     y_depot = cds.data['y-cor'][0]
     f.circle(x=x_depot, y=y_depot, source=cds, size=15, color='red')
     f.circle(x=cds.data['x-cor'][1:], y=cds.data['y-cor'][1:], size=5, color='blue')
-
-    x_line = []
-    y_line = []
-    x_line.append(cds.data['x-cor'][0])
-    y_line.append(cds.data['y-cor'][0])
+    route_counter = 0
     for column in op_data:
         if column.startswith('Route'):
-            print(column)
+            x_line = []
+            y_line = []
+            x_line.append(cds.data['x-cor'][0])
+            y_line.append(cds.data['y-cor'][0])
+
             for i in range(int(max(cds.data[column])), -1, -1):
                 #if int(cds.data[column][i]) ==
                 ind = op_data[op_data[column] == i].index[0]
@@ -160,7 +167,18 @@ def visual_treat(op_data):
                 y_line.append(cds.data['y-cor'][ind])
             print('x_line = ' + str(x_line))
             print('y_line = ' + str(y_line))
-    f.line(x=x_line, y=y_line)
+            f.line(x=x_line, y=y_line, line_color=mypalette[route_counter],
+                   line_width = 3, legend = str(column))
+            route_counter += 1
+    # N = 4000
+    # x = np.random.random(size=N) * 100
+    # y = np.random.random(size=N) * 100
+    # radii = np.random.random(size=N) * 1.5
+    # colors = [
+    #     "#%02x%02x%02x" % (int(r), int(g), 150) for r, g in zip(50 + 2 * x, 30 + 2 * y)
+    # ]
+    output_file("vehicle_routing.html")
+
     show(f)
 
 import sys
@@ -189,7 +207,7 @@ if __name__ == '__main__':
         print(op_data)
 
         # The following method is to show the routes in bokeh
-        visual_treat(op_data)
+        visual_treat(vehicles, op_data)
 
     else:
         print(
