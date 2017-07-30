@@ -1,23 +1,37 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+# @author - Pavan Kota
 
 import math
 import numpy as np
 import pandas as pd
+import xlsxwriter
 from gurobipy import *
 from collections import namedtuple
 from bokeh.plotting import figure
 from bokeh.io import output_file, save, show
 from bokeh.palettes import Spectral11
 from bokeh.models import ColumnDataSource
-from bokeh.models.annotations import LabelSet, Label
+from bokeh.models.annotations import LabelSet
 
 Customer = namedtuple("Customer", ['index', 'demand', 'x', 'y'])
 
 def length(customer1, customer2):
+    """
+    This method is used to calculate the manhattan distance of between two locations
+    :param customer1: source location
+    :param customer2: destination location
+    :return: returns the
+    """
     return (abs(customer1.x - customer2.x)  + abs(customer1.y - customer2.y))
 
 def solve_it(input_data):
+    """
+    This method is the primary solver from the input information
+    :param input_data: Input data contains the number of number of customers/pickups,
+    capacity of each vehicle, demand and location co-ordinates of each of the locations
+    :return: Returns the objective value(min distance)
+    """
 
     # parse the input
     lines = input_data.split('\n')
@@ -89,6 +103,11 @@ def solve_it(input_data):
     return round(m.ObjVal,3)
 
 def post_proc(ip_data):
+    """
+    This method is used to process the solution from the solver and give a visual structure of output
+    :param ip_data: dataframe that contains the dataframe from the input file
+    :return: returns the number of vehicles/routes and the processed dataframe for visualization
+    """
 
     # Reading the solution file generated
     data = pd.read_csv("./result/solution.csv")
@@ -125,8 +144,13 @@ def post_proc(ip_data):
                 for j in routes_copy:
                     if value[-1] == j[0]:
                         value.append(j[1])
+
+    # adding the dictionary to a dataframe
     df = pd.DataFrame.from_dict(tour, orient='index')
     df = df.T
+
+    # iterating over the dataframe that has routes and adding it to the input dataframe
+    #
 
     for key, value in tour.items():
         for ind, val in df[key].iteritems():
@@ -135,10 +159,21 @@ def post_proc(ip_data):
                     ip_data[key].iloc[int(val)] = int(ind)
                 else:
                     ip_data[key].iloc[0] = 0
+
+            # converting the sites in the route to numeric. The coerce param will make sure the NaN's
+            # don't get in the way of conversion
+
             ip_data[key] = pd.to_numeric(ip_data[key], errors='coerce')
+
     return vehicles, ip_data
 
 def visual_treat(vehicles, op_data):
+    """
+    This method is used for generating a bokeh plot
+    :param vehicles: gets the number of vehicles
+    :param op_data: pandas dataframe that contains the solution
+    :return:
+    """
 
     TOOLS = "hover,crosshair,pan,wheel_zoom,zoom_in,zoom_out,box_zoom," \
             "undo,redo,reset,tap,save,box_select,poly_select,lasso_select,"
@@ -199,16 +234,16 @@ def visual_treat(vehicles, op_data):
             f.line(x=x_line, y=y_line, line_color=mypalette[route_counter],
                    line_width = 3, legend = str(column))
             route_counter += 1
-    # N = 4000
-    # x = np.random.random(size=N) * 100
-    # y = np.random.random(size=N) * 100
-    # radii = np.random.random(size=N) * 1.5
-    # colors = [
-    #     "#%02x%02x%02x" % (int(r), int(g), 150) for r, g in zip(50 + 2 * x, 30 + 2 * y)
-    # ]
+
+    #styling the legend
+    f.legend.location = "top_left"
+
+    #output file
     output_file("vehicle_routing.html")
 
     show(f)
+
+    return None
 
 import sys
 if __name__ == '__main__':
@@ -229,6 +264,13 @@ if __name__ == '__main__':
 
         # post_proc will process the data and put all them in a readable dataframe for bokeh to take over
         vehicles, op_data = post_proc(ip_data)
+
+        writer = pd.ExcelWriter('./result/route.xlsx', engine='xlsxwriter')
+
+        op_data.to_excel(writer, sheet_name='Sheet1', na_rep='', float_format=None, columns=None,
+                         header=True, index=True, index_label=None, startrow=0, startcol=0, engine=None,
+                         merge_cells=True, encoding=None, inf_rep='inf', verbose=True, freeze_panes=None)
+        writer.close()
 
         print("The optimal solution is to use " + str(vehicles) + " vehicles for this problem")
         print("")
