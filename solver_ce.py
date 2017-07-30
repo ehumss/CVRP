@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import math
-
 import numpy as np
 import pandas as pd
 from gurobipy import *
@@ -11,6 +10,7 @@ from bokeh.plotting import figure
 from bokeh.io import output_file, save, show
 from bokeh.palettes import Spectral11
 from bokeh.models import ColumnDataSource
+from bokeh.models.annotations import LabelSet, Label
 
 Customer = namedtuple("Customer", ['index', 'demand', 'x', 'y'])
 
@@ -143,15 +143,47 @@ def visual_treat(vehicles, op_data):
     TOOLS = "hover,crosshair,pan,wheel_zoom,zoom_in,zoom_out,box_zoom," \
             "undo,redo,reset,tap,save,box_select,poly_select,lasso_select,"
     mypalette = Spectral11[0:vehicles]
-    print(mypalette)
 
     f = figure(tools=TOOLS)
+
+    # styling the plot area
+
+    f.plot_height = 650
+    f.plot_width = 1100
+    f.background_fill_color = "olive"
+    f.background_fill_alpha = 0.2
+
+    #styling the title
+    f.title.text = "Vehicle Routing Problem"
+    f.title.text_color = "olive"
+    f.title.text_font = "verdana"
+    f.title.text_font_size = "22px"
+    f.title.align = "center"
+
+    #styling the axes
+    f.xaxis.axis_label = "X-Axis"
+    f.yaxis.axis_label = "Y-Axis"
+    f.yaxis.major_label_orientation = "vertical"
+    f.axis.axis_label_text_color = "blue"
+
+    #styling the grid
+    f.toolbar.logo = None
+
+    sites = ColumnDataSource(dict(x_sites=op_data['x-cor'][1:], y_sites=op_data['y-cor'][1:],
+                                  ix_sites=list(op_data.index.values[1:])))
+
+    #adding labels
+    labels = LabelSet(x="x_sites", y="y_sites", text="ix_sites", level='glyph',
+              x_offset=5, y_offset=5, source=sites, render_mode='canvas')
 
     cds = ColumnDataSource(op_data)
     x_depot = cds.data['x-cor'][0]
     y_depot = cds.data['y-cor'][0]
     f.circle(x=x_depot, y=y_depot, source=cds, size=15, color='red')
-    f.circle(x=cds.data['x-cor'][1:], y=cds.data['y-cor'][1:], size=5, color='blue')
+    f.circle(x="x_sites", y="y_sites", source = sites, size=7, color='blue')
+
+    f.add_layout(labels)
+
     route_counter = 0
     for column in op_data:
         if column.startswith('Route'):
@@ -161,12 +193,9 @@ def visual_treat(vehicles, op_data):
             y_line.append(cds.data['y-cor'][0])
 
             for i in range(int(max(cds.data[column])), -1, -1):
-                #if int(cds.data[column][i]) ==
                 ind = op_data[op_data[column] == i].index[0]
                 x_line.append(cds.data['x-cor'][ind])
                 y_line.append(cds.data['y-cor'][ind])
-            print('x_line = ' + str(x_line))
-            print('y_line = ' + str(y_line))
             f.line(x=x_line, y=y_line, line_color=mypalette[route_counter],
                    line_width = 3, legend = str(column))
             route_counter += 1
@@ -192,7 +221,7 @@ if __name__ == '__main__':
 
         tour_length = solve_it(input_data)
 
-        print("The total tour lenght is : " + str(tour_length) + " units")
+        print("The total tour length is : " + str(tour_length) + " units")
 
         # Reading the input file to a Pandas dataframe for further processing
         ip_data = pd.read_csv(file_location, sep=' ', header=None, skiprows=[0], skip_blank_lines=True,
